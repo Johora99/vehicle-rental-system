@@ -24,7 +24,7 @@ const getSingleVehicle = async(id: string)=>{
 
 const updateVehicle = async(vehicle_name?: string, type?: string, registration_number?: string, daily_rent_price?: number, availability_status?: string, id?: string)=>{
 
-if (!id) throw new Error("User ID is required");
+if (!id) throw new Error("Vehicle ID is required");
 
 const fields: string[] = [];
   const values: any[] = [];

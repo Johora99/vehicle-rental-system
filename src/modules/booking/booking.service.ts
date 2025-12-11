@@ -1,62 +1,50 @@
 import { pool } from "../../config/db";
 
 
-const createBooking = async (payload: any) => {
+const createBooking = async (payload: any, id: string) => {
   const { customer_id, vehicle_id, rent_start_date, rent_end_date } = payload;
-
   if (!customer_id || !vehicle_id || !rent_start_date || !rent_end_date) {
     throw new Error("All fields are required");
   }
-
+    // 2️⃣ Verify the logged-in user matches the customer_id
+  if (id !== customer_id) {
+    throw new Error("You are not authorized to create a booking for this customer");
+  }
   const vehicleResult = await pool.query(
     `SELECT vehicle_name, daily_rent_price FROM vehicles WHERE id=$1`,
     [vehicle_id]
   );
-
   if (!vehicleResult || vehicleResult.rows.length === 0) {
     throw new Error("Vehicle not found");
   }
-
   const vehicle = vehicleResult.rows[0];
-
   const activeBooking = await pool.query(
     `SELECT * FROM bookings WHERE vehicle_id=$1 AND status='active'`,
     [vehicle_id]
   );
-
   if (activeBooking.rows.length > 0) {
     throw new Error("Vehicle already has an active booking");
   }
-
-  const start = new Date(rent_start_date);
-  const end = new Date(rent_end_date);
-  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
-
-  if (diffDays <= 0) throw new Error("End date must be after start date");
-
-  const total_price = diffDays * Number(vehicle.daily_rent_price);
-
-
+const start = new Date(rent_start_date + "T00:00:00");
+const end = new Date(rent_end_date + "T00:00:00");
+const number_of_days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+if (number_of_days <= 0) throw new Error("End date must be after start date");
+const total_price = number_of_days * Number(vehicle.daily_rent_price);
   const bookingResult = await pool.query(
     `INSERT INTO bookings (
       customer_id, vehicle_id, rent_start_date, rent_end_date, total_price, status
     ) VALUES ($1, $2, $3, $4, $5, 'active') RETURNING *`,
     [customer_id, vehicle_id, rent_start_date, rent_end_date, total_price]
   );
-
   const booking = bookingResult.rows[0];
-
-
   await pool.query(
     `UPDATE vehicles SET availability_status='booked' WHERE id=$1`,
     [vehicle_id]
   );
-
-
   return {
     ...booking,
-    rent_start_date: booking.rent_start_date.toISOString().split("T")[0],
-    rent_end_date: booking.rent_end_date.toISOString().split("T")[0],
+    rent_start_date: booking.rent_start_date.toLocaleDateString("en-CA"),
+    rent_end_date: booking.rent_end_date.toLocaleDateString("en-CA"),
     total_price: total_price,
     vehicle: {
       vehicle_name: vehicle.vehicle_name,
@@ -86,8 +74,8 @@ let result;
       id: b.id,
       customer_id: b.customer_id,
       vehicle_id: b.vehicle_id,
-      rent_start_date: b.rent_start_date.toISOString().split("T")[0],
-      rent_end_date: b.rent_end_date.toISOString().split("T")[0],
+      rent_start_date: b.rent_start_date.toLocaleDateString("en-CA"),
+      rent_end_date: b.rent_end_date.toLocaleDateString("en-CA"),
       total_price: Number(b.total_price),
       status: b.status,
       customer: {
@@ -114,8 +102,8 @@ let result;
     return result.rows.map(b => ({
       id: b.id,
       vehicle_id: b.vehicle_id,
-      rent_start_date: b.rent_start_date.toISOString().split("T")[0],
-      rent_end_date: b.rent_end_date.toISOString().split("T")[0],
+      rent_start_date: b.rent_start_date.toLocaleDateString("en-CA"),
+      rent_end_date: b.rent_end_date.toLocaleDateString("en-CA"),
       total_price: Number(b.total_price),
       status: b.status,
       vehicle: {
@@ -160,17 +148,25 @@ const updateBooking = async(user: any, bookingId: string, status: "cancelled" | 
   const updatedBooking = updatedBookingResult.rows[0];
 
 
-  let vehicleData = null;
-  if (status === "returned") {
-    await pool.query(`UPDATE vehicles SET availability_status='available' WHERE id=$1`, [booking.vehicle_id]);
-    const vehicleResult = await pool.query(`SELECT availability_status FROM vehicles WHERE id=$1`, [booking.vehicle_id]);
-    vehicleData = vehicleResult.rows[0];
+let vehicleData = null;
+if (status === "cancelled" || status === "returned") {
+  await pool.query(`UPDATE vehicles SET availability_status='available' WHERE id=$1`, [booking.vehicle_id]);
+
+if (status === "returned") {
+      const vehicleResult = await pool.query(
+        `SELECT availability_status FROM vehicles WHERE id=$1`,
+        [booking.vehicle_id]
+      );
+      vehicleData = vehicleResult.rows[0];
   }
+}
 
   return {
     ...updatedBooking,
+    rent_start_date: updatedBooking.rent_start_date.toLocaleDateString("en-CA"),
+    rent_end_date: updatedBooking.rent_end_date.toLocaleDateString("en-CA"),
     total_price: Number(updatedBooking.total_price),
-    vehicle: vehicleData || undefined
+   ...(status === "returned" && { vehicle: vehicleData})
   };
 }
 

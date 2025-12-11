@@ -10,7 +10,7 @@ export const pool = new Pool({
   CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
+  email VARCHAR(150) NOT NULL UNIQUE CHECK (email = LOWER(email)),
   password TEXT NOT NULL CHECK (char_length(password) >= 6),
   phone VARCHAR(50) NOT NULL,
   role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'customer')),
@@ -37,6 +37,7 @@ await pool.query(`
   vehicle_id INT REFERENCES vehicles(id) ON DELETE CASCADE,
   rent_start_date DATE NOT NULL,
   rent_end_date DATE NOT NULL,
+  CHECK (rent_end_date > rent_start_date),
   total_price INTEGER NOT NULL CHECK (total_price > 0),
   status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'cancelled', 'returned'))
 );

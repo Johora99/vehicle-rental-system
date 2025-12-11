@@ -27,8 +27,8 @@ try {
   const result = await vehicleService.getAllVehicles();
 
       if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "No vehicles found",
         data: [],
       });

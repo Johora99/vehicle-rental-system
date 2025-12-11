@@ -15,7 +15,7 @@ const createUser = async(payload: Record<string, unknown>) =>{
 }
 
 const loginUser = async(email: string, password: string)=>{
-   
+
 const result = await pool.query(`SELECT * FROM users WHERE email=$1`, [
     email,
   ]);
@@ -42,10 +42,10 @@ if(!matchPassword){
   const token = jwt.sign(jwtPayload, config.jwtSecret as string, {expiresIn: "7d"})
 
   delete user.password;
-  return {token: `Bearer ${token}`, user}
+  return {token: token, user}
 }
 
 export const authService = {
-  createUser,
+ createUser,
  loginUser,
 }
