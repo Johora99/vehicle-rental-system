@@ -24,12 +24,12 @@ const result = await pool.query(`SELECT * FROM users WHERE email=$1`, [
   throw new Error("User not found!");
   }
 
-const user = result.rows[0];
-
-const matchPassword = await bcrypt.compare(password, user.password);
-if(!matchPassword){
-  return 'Invalid credentials'
-}
+  
+  const user = result.rows[0];
+  const matchPassword = await bcrypt.compare(password, user.password);
+  if (!matchPassword) {
+    throw new Error("Invalid credentials");
+  }
 
   const jwtPayload = {
     id: user.id,
